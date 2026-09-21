@@ -1,18 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "Chat to Markdown",
+  "name": "ContextHop",
   "version": "0.6.1",
-  "description": "Export LLM chat conversations as clean Markdown or API-format YAML — copy, download, or preview.",
+  "description": "Copy a compact context pack from ChatGPT, Claude or Gemini and continue your conversation in a fresh chat.",
   "homepage_url": "https://chatup.therobot.codes",
   "permissions": ["clipboardWrite", "storage"],
   "icons": {
     "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
   "action": {
+    "default_title": "ContextHop — Continue any AI chat in a new one.",
     "default_icon": {
       "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }

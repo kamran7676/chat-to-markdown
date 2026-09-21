@@ -32,6 +32,7 @@
       .c2m-panel.open { display:flex; }
       .c2m-head { display:flex; align-items:center; gap:8px; padding:8px 12px;
                   background:#1f2430; border-bottom:1px solid #3a4150; }
+      .c2m-brand { color:#e8eaed; font-weight:700; font-size:12px; white-space:nowrap; }
       .c2m-fname { flex:1; font-weight:600; font-size:12px; overflow:hidden;
                    text-overflow:ellipsis; white-space:nowrap; }
       .c2m-seg { display:flex; border:1px solid #3a4150; border-radius:8px; overflow:hidden; }
@@ -77,6 +78,7 @@
     <div class="c2m-wrap">
       <div class="c2m-panel" data-role="panel">
         <div class="c2m-head">
+          <span class="c2m-brand">ContextHop</span>
           <span class="c2m-fname" data-role="fname"></span>
           <div class="c2m-seg">
             <button data-mode="md" class="active">MD</button>
@@ -98,10 +100,10 @@
         </div>
       </div>
       <div class="c2m-onboarding" data-role="onboarding">
-        <span>New: Copy Context Pack</span>
+        <span>New in ContextHop: Copy Context Pack</span>
         <button class="c2m-onboarding-dismiss" data-role="onboarding-dismiss" title="Dismiss">✕</button>
       </div>
-      <button class="c2m-toggle" data-role="toggle" title="Preview this conversation as Markdown or YAML">MD ▾</button>
+      <button class="c2m-toggle" data-role="toggle" title="ContextHop — Continue any AI chat in a new one.">ContextHop ▾</button>
     </div>
     <div class="c2m-toast" data-role="toast"></div>`;
   document.documentElement.appendChild(host);
@@ -208,12 +210,12 @@
     rebuild();
     applyMode();
     panel.classList.add('open');
-    toggle.textContent = 'MD ▴';
+    toggle.textContent = 'ContextHop ▴';
   }
 
   function closePanel() {
     panel.classList.remove('open');
-    toggle.textContent = 'MD ▾';
+    toggle.textContent = 'ContextHop ▾';
   }
 
   toggle.addEventListener('click', function (e) {

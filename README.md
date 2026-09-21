@@ -1,13 +1,15 @@
-# chat-to-markdown
+# ContextHop
 
-> Browser extension that turns LLM chat conversations into clean, portable Markdown — copy or download in one click.
+> Continue any AI chat in a new one.
 
-**Status:** v0.6.1 — ChatGPT + Claude + Gemini + z.ai + Open WebUI (any instance) + use.ai + Le Chat adapters (verified), Grok / Groq experimental; MD + YAML preview panel with message-order toggle, tool-call summaries · **License:** MIT
+Copy a compact context pack from ChatGPT, Claude or Gemini and continue your conversation in a fresh chat.
+
+**Status:** v0.6.1 — works with ChatGPT, Claude, Gemini, z.ai, Open WebUI, use.ai, Le Chat, Grok, and Groq; ContextHop packs, Markdown/YAML preview, and tool-call summaries · **License:** MIT
 
 ## Why
 
 Chats with LLMs are where real work happens, but every vendor locks the transcript
-inside its own web UI. chat-to-markdown extracts the conversation — turns, code blocks,
+inside its own web UI. ContextHop extracts the conversation — turns, code blocks,
 tables, math — and converts it to standard Markdown you can copy to the clipboard or
 save as a `.md` file.
 
@@ -87,8 +89,8 @@ node --test               # converter test suite (auto-discovers test/*.test.js)
 ```
 
 To try it live: `chrome://extensions` → enable Developer mode → **Load unpacked** →
-select `chrome/`. Open a ChatGPT conversation and use the floating **MD ▾** button
-(Copy Markdown / Download .md).
+select `chrome/`. Open a supported chat and use the floating **ContextHop ▾** button
+(Copy Context Pack / Copy Markdown / Download .md).
 
 **Adding a platform:** create `chrome/src/content/adapters/<site>.js` that pushes an
 adapter object onto `C2M.adapters` with `isCurrentSite()` and `getConversation()` →
@@ -111,5 +113,7 @@ After installing or updating, reload the extension card and refresh the chat
 tab — content scripts inject on page load.
 
 ## License
+
+Based on chat-to-markdown by the-robot-lives (MIT)
 
 [MIT](LICENSE)
