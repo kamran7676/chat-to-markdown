@@ -279,6 +279,8 @@
     C2M.export.downloadText(name, preview.value);
     showToast('Downloaded ' + name);
   });
+
+  showOnboarding();
   }
 
   function start() {
@@ -286,7 +288,6 @@
     adapter = C2M.getActiveAdapter();
     if (!adapter) return false;
     inject();
-    showOnboarding();
     return true;
   }
 
