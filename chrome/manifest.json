@@ -4,7 +4,7 @@
   "version": "0.6.1",
   "description": "Export LLM chat conversations as clean Markdown or API-format YAML — copy, download, or preview.",
   "homepage_url": "https://chatup.therobot.codes",
-  "permissions": ["clipboardWrite"],
+  "permissions": ["clipboardWrite", "storage"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -26,6 +26,7 @@
       "js": [
         "src/lib/markdown.js",
         "src/lib/export.js",
+        "src/lib/contextpack.js",
         "src/content/adapters/tool-calls.js",
         "src/content/adapters/generic.js",
         "src/content/adapters/chatgpt.js",

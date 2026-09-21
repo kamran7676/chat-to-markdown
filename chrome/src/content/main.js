@@ -51,10 +51,22 @@
       .c2m-btn.primary { background:#4f6ef7; border-color:#4f6ef7; }
       .c2m-btn.primary:hover { background:#3d5cf0; }
       .c2m-btn.on { background:#4f6ef7; border-color:#4f6ef7; }
+      .c2m-context-action { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+      .c2m-helper { color:#9aa4b2; font-size:11px; white-space:nowrap; }
       .c2m-toggle { background:#1f2430; color:#e8eaed; border:1px solid #3a4150;
                     border-radius:999px; padding:7px 14px; font:600 12px system-ui,sans-serif;
                     cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.3); }
       .c2m-toggle:hover { background:#2c3342; }
+      .c2m-toggle.pulse { animation:c2m-pulse 1.5s ease-in-out infinite; }
+      .c2m-onboarding { position:absolute; right:0; bottom:42px; display:none; align-items:center;
+            gap:8px; padding:8px 10px; background:#1f2430; color:#e8eaed;
+            border:1px solid #4f6ef7; border-radius:8px; white-space:nowrap;
+            font:12px system-ui,sans-serif; box-shadow:0 6px 20px rgba(0,0,0,.35); }
+      .c2m-onboarding.show { display:flex; }
+      .c2m-onboarding-dismiss { background:transparent; border:0; color:#9aa4b2; cursor:pointer;
+                font-size:14px; line-height:1; padding:0 2px; }
+      @keyframes c2m-pulse { 0%,100% { box-shadow:0 4px 16px rgba(0,0,0,.3); }
+                 50% { box-shadow:0 4px 16px rgba(79,110,247,.3), 0 0 0 6px rgba(79,110,247,.15); } }
       .c2m-toast { position:fixed; right:20px; bottom:64px; background:#1f2430; color:#e8eaed;
                    border:1px solid #3a4150; padding:8px 12px; border-radius:8px;
                    font:13px system-ui,sans-serif; opacity:0; transition:opacity .2s;
@@ -77,9 +89,17 @@
         <div class="c2m-foot">
           <button class="c2m-btn" data-role="refresh">↻ Refresh</button>
           <span class="c2m-spacer"></span>
+          <div class="c2m-context-action">
+            <button class="c2m-btn primary" data-role="context-pack">Copy Context Pack</button>
+            <span class="c2m-helper">Paste in a new chat to continue</span>
+          </div>
           <button class="c2m-btn" data-role="copy">Copy</button>
           <button class="c2m-btn primary" data-role="save">Save</button>
         </div>
+      </div>
+      <div class="c2m-onboarding" data-role="onboarding">
+        <span>New: Copy Context Pack</span>
+        <button class="c2m-onboarding-dismiss" data-role="onboarding-dismiss" title="Dismiss">✕</button>
       </div>
       <button class="c2m-toggle" data-role="toggle" title="Preview this conversation as Markdown or YAML">MD ▾</button>
     </div>
@@ -92,16 +112,38 @@
   const preview = qs('[data-role="preview"]');
   const toggle = qs('[data-role="toggle"]');
   const toast = qs('[data-role="toast"]');
+  const onboarding = qs('[data-role="onboarding"]');
 
   let capture = null;  // {meta, base, turns:[{role, element, elementClean, tools}]}
   let docs = null;     // {base, md, yaml} for the current mode/order
   let mode = 'md';
   let reverse = false; // false = chronological (oldest first), true = newest first
 
-  function showToast(msg) {
+  function showToast(msg, duration) {
     toast.textContent = msg;
     toast.classList.add('show');
-    setTimeout(function () { toast.classList.remove('show'); }, 1800);
+    setTimeout(function () { toast.classList.remove('show'); }, duration || 1800);
+  }
+
+  function finishOnboarding() {
+    onboarding.classList.remove('show');
+    toggle.classList.remove('pulse');
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ contextPackOnboardingSeen: true });
+    }
+  }
+
+  function showOnboarding() {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+      onboarding.classList.add('show');
+      toggle.classList.add('pulse');
+      return;
+    }
+    chrome.storage.local.get('contextPackOnboardingSeen', function (result) {
+      if (result && result.contextPackOnboardingSeen) return;
+      onboarding.classList.add('show');
+      toggle.classList.add('pulse');
+    });
   }
 
   function captureDoc() {
@@ -160,6 +202,7 @@
   }
 
   function openPanel() {
+    finishOnboarding();
     capture = captureDoc();
     if (!capture) return;
     rebuild();
@@ -176,6 +219,10 @@
   toggle.addEventListener('click', function (e) {
     e.stopPropagation();
     panel.classList.contains('open') ? closePanel() : openPanel();
+  });
+  qs('[data-role="onboarding-dismiss"]').addEventListener('click', function (e) {
+    e.stopPropagation();
+    finishOnboarding();
   });
   qs('[data-role="close"]').addEventListener('click', closePanel);
 
@@ -214,6 +261,16 @@
     showToast(ok ? 'Copied ' + mode.toUpperCase() : 'Copy failed');
   });
 
+  qs('[data-role="context-pack"]').addEventListener('click', async function () {
+    const conv = adapter.getConversation();
+    if (!conv || !conv.turns.length) {
+      showToast('No conversation found');
+      return;
+    }
+    const ok = await C2M.export.copyText(C2M.contextPack.build(conv));
+    showToast(ok ? 'Copied! Paste into a new chat.' : 'Copy failed', 3000);
+  });
+
   qs('[data-role="save"]').addEventListener('click', function () {
     if (!docs) return;
     const name = fname.textContent || docs.base + '.md';
@@ -227,6 +284,7 @@
     adapter = C2M.getActiveAdapter();
     if (!adapter) return false;
     inject();
+    showOnboarding();
     return true;
   }
 
