@@ -95,12 +95,11 @@
     const btn = element('button', 'dest-btn', dest.label);
     btn.type = 'button';
     btn.disabled = true;
-    btn.addEventListener('click', function () {
-      if (!result) return;
+    btn.addEventListener('click', withFullExport(function () {
       copyText(result.contextPack).then(function () {
         window.open(dest.url, '_blank');
       });
-    });
+    }));
     destRow.appendChild(btn);
     return btn;
   });
@@ -109,14 +108,13 @@
   const packBtn = element('button', 'pack-btn', '⧉ Copy Context Pack');
   packBtn.type = 'button';
   packBtn.disabled = true;
-  packBtn.addEventListener('click', function () {
-    if (!result) return;
+  packBtn.addEventListener('click', withFullExport(function () {
     copyText(result.contextPack).then(function (copied) {
       if (!copied) return;
       packBtn.textContent = '✓ Copied!';
       setTimeout(function () { packBtn.textContent = '⧉ Copy Context Pack'; }, 1300);
     });
-  });
+  }));
   continueCard.appendChild(packBtn);
   continueCard.appendChild(element('div', 'pack-hint', 'Copies a compact summary of this chat, then opens the destination — paste it as your first message there.'));
 
@@ -176,8 +174,7 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
   }
 
-  copyBtn.addEventListener('click', function () {
-    if (!result) return;
+  copyBtn.addEventListener('click', withFullExport(function () {
     copyText(mode === 'md' ? result.md : result.yaml).then(function (copied) {
       if (!copied) return;
       copyBtn.textContent = '✓ Copied!';
@@ -187,12 +184,11 @@
         copyBtn.classList.remove('copied');
       }, 1300);
     });
-  });
+  }));
 
-  downloadBtn.addEventListener('click', function () {
-    if (!result) return;
+  downloadBtn.addEventListener('click', withFullExport(function () {
     downloadText(result.base + (mode === 'md' ? '.md' : '.yaml'), mode === 'md' ? result.md : result.yaml);
-  });
+  }));
 
   function showExportError(message) {
     exportStatus.textContent = message;
@@ -206,6 +202,39 @@
     downloadBtn.disabled = false;
   }
 
+  let activeTabId = null;
+  let fetchPromise = null;
+
+  function fetchFullExport() {
+    if (fetchPromise) return fetchPromise;
+    fetchPromise = new Promise(function (resolve, reject) {
+      if (!activeTabId) { reject(new Error('No active tab found.')); return; }
+      exportStatus.textContent = 'Capturing full chat…';
+      exportStatus.classList.remove('error');
+      chrome.tabs.sendMessage(activeTabId, { type: 'CONTEXTHOP_GET_EXPORT' }, function (response) {
+        if (chrome.runtime.lastError || !response || !response.ok) {
+          const message = (response && response.error) || 'Could not read this conversation.';
+          showExportError(message);
+          fetchPromise = null;
+          reject(new Error(message));
+          return;
+        }
+        result = response;
+        exportStatus.textContent = (response.title || 'Untitled chat') + ' · ' + response.turnCount + ' turns';
+        exportStatus.classList.remove('error');
+        resolve(response);
+      });
+    });
+    return fetchPromise;
+  }
+
+  function withFullExport(action) {
+    return function () {
+      if (result) { action(); return; }
+      fetchFullExport().then(action).catch(function () { });
+    };
+  }
+
   if (!chrome.tabs) {
     showExportError('Open this on a supported AI chat tab to export.');
   } else {
@@ -215,7 +244,8 @@
         showExportError('No active tab found.');
         return;
       }
-      chrome.tabs.sendMessage(tab.id, { type: 'CONTEXTHOP_GET_EXPORT' }, function (response) {
+      activeTabId = tab.id;
+      chrome.tabs.sendMessage(tab.id, { type: 'CONTEXTHOP_GET_META' }, function (response) {
         if (chrome.runtime.lastError || !response) {
           showExportError('Open a supported AI chat tab (Claude, ChatGPT, Gemini) and try again.');
           return;
@@ -224,7 +254,6 @@
           showExportError(response.error || 'Could not read this conversation.');
           return;
         }
-        result = response;
         exportStatus.textContent = (response.title || 'Untitled chat') + ' · ' + response.turnCount + ' turns';
         exportStatus.classList.remove('error');
         enableButtons();

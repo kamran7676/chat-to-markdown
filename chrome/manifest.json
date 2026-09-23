@@ -4,7 +4,14 @@
   "version": "0.6.1",
   "description": "Copy a compact context pack from ChatGPT, Claude or Gemini and continue your conversation in a fresh chat.",
   "homepage_url": "https://chatup.therobot.codes",
-  "permissions": ["clipboardWrite", "storage", "activeTab"],
+  "permissions": [
+    "clipboardWrite",
+    "storage",
+    "activeTab"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -29,13 +36,19 @@
         "icons/easypaisa-icon.png",
         "icons/jazzcash-icon.png"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "content_scripts": [
     {
-      "matches": ["https://claude.ai/*"],
-      "js": ["src/content/claude-network-probe.js"],
+      "matches": [
+        "https://claude.ai/*"
+      ],
+      "js": [
+        "src/content/claude-network-probe.js"
+      ],
       "world": "MAIN",
       "run_at": "document_start"
     },

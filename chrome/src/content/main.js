@@ -31,6 +31,7 @@
     const host = document.createElement('div');
     host.id = 'chat-to-markdown-host';
     host.style.cssText = 'display:block;width:100%;box-sizing:border-box;margin:0 0 8px;position:relative;z-index:5;isolation:isolate;';
+
     const shadow = host.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
     <style>
@@ -112,6 +113,7 @@
                font:12px system-ui,sans-serif; text-decoration:underline; cursor:pointer; }
       [hidden] { display:none !important; }
       @keyframes c2m-shine{0%{background-position:0% 50%}100%{background-position:-250% 50%}}
+      .c2m-update-overlay { position:fixed; inset:0; z-index:2147483647; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(5,5,12,.68); backdrop-filter:blur(5px); opacity:0; visibility:hidden; pointer-events:none; transition:opacity .18s ease,visibility .18s; } .c2m-update-overlay.open { opacity:1; visibility:visible; pointer-events:auto; } .c2m-update-dialog { width:min(420px,100%); background:var(--c2m-surface); border:1px solid var(--c2m-line); border-radius:var(--c2m-r-lg); box-shadow:0 24px 70px rgba(0,0,0,.55); overflow:hidden; transform:translateY(10px) scale(.97); transition:transform .18s ease; } .c2m-update-overlay.open .c2m-update-dialog { transform:translateY(0) scale(1); } .c2m-update-head { display:flex; align-items:center; gap:12px; padding:18px; background: linear-gradient( 100deg, rgba(115,87,246,.14), rgba(255,107,87,.08) ), var(--c2m-surface); border-bottom:1px solid var(--c2m-line); } .c2m-update-icon { width:42px; height:42px; border-radius:12px; object-fit:cover; flex-shrink:0; } .c2m-update-title { margin:0; color:var(--c2m-text); font-size:16px; font-weight:750; } .c2m-update-version { margin-top:3px; color:var(--c2m-muted); font-size:11px; } .c2m-update-body { padding:18px; } .c2m-update-message { margin:0; color:var(--c2m-muted); font-size:13px; line-height:1.55; } .c2m-update-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; } .c2m-update-btn { border:1px solid var(--c2m-line); border-radius:var(--c2m-r-sm); background:rgba(255,255,255,.05); color:var(--c2m-text); padding:8px 13px; font:650 12px system-ui,sans-serif; cursor:pointer; transition:background .15s,border-color .15s,transform .15s; } .c2m-update-btn:hover { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2); } .c2m-update-btn.primary { background:var(--c2m-gradient); border-color:transparent; color:#fff; box-shadow:0 4px 14px rgba(115,87,246,.25); } .c2m-update-btn.primary:hover { transform:translateY(-1px); filter:brightness(1.08); }
     </style>
     <div class="c2m-wrap">
       <div class="c2m-panel" data-role="panel">
@@ -161,7 +163,33 @@
         </div>
       </div>
     </div>
-    <div class="c2m-toast" data-role="toast"></div>`;
+    <div class="c2m-toast" data-role="toast"></div>
+    <div class="c2m-update-overlay" data-role="update-overlay">
+    <div class="c2m-update-dialog" role="dialog" aria-modal="true">
+      <div class="c2m-update-head">
+        <img class="c2m-update-icon" src="${APP_ICON_IMG}" alt="">
+        <div>
+          <h3 class="c2m-update-title">Update available</h3>
+          <div class="c2m-update-version" data-role="update-version"></div>
+        </div>
+      </div>
+
+      <div class="c2m-update-body">
+        <p class="c2m-update-message">
+          A new version of ContextHop is ready. Update now to get the latest improvements and fixes.
+        </p>
+
+        <div class="c2m-update-actions">
+          <button type="button" class="c2m-update-btn" data-role="update-later">
+            Later
+          </button>
+          <button type="button" class="c2m-update-btn primary" data-role="update-now">
+            Update now
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>`;
     document.documentElement.appendChild(host);
 
     const qs = function (sel) { return shadow.querySelector(sel); };
@@ -175,6 +203,11 @@
     const statsView = qs('[data-role="stats-view"]');
     const supportToggle = qs('[data-role="support-toggle"]');
     const supportPopover = qs('[data-role="support-popover"]');
+    const updateOverlay = qs('[data-role="update-overlay"]');
+    const updateVersion = qs('[data-role="update-version"]');
+    const updateNow = qs('[data-role="update-now"]');
+    const updateLater = qs('[data-role="update-later"]');
+
     const brand = qs('.c2m-brand');
     const brandIcon = document.createElement('img');
     brandIcon.className = 'c2m-brand-icon';
@@ -195,11 +228,11 @@
     toggleBadge.textContent = '•';
     toggle.appendChild(toggleBadge);
 
-    let capture = null;  // {meta, base, turns:[{role, element, elementClean, tools}]}
-    let docs = null;     // {base, md, yaml} for the current mode/order
+    let capture = null;
+    let docs = null;
     let mode = 'md';
     let view = 'preview';
-    let reverse = false; // false = chronological (oldest first), true = newest first
+    let reverse = false;
     let inlineUsage = null;
 
     function showToast(msg, duration) {
@@ -207,6 +240,39 @@
       toast.classList.add('show');
       setTimeout(function () { toast.classList.remove('show'); }, duration || 1800);
     }
+
+    function showUpdateDialog(version) {
+      if (version) {
+        updateVersion.textContent = 'Version ' + version + ' is available';
+      } else {
+        updateVersion.textContent = 'A new version is available';
+      }
+
+      updateOverlay.classList.add('open');
+    }
+
+    function hideUpdateDialog() {
+      updateOverlay.classList.remove('open');
+    }
+
+    function applyExtensionUpdate() {
+      updateNow.disabled = true;
+      updateNow.textContent = 'Updating…';
+
+      chrome.runtime.sendMessage({
+        type: 'CONTEXTHOP_APPLY_UPDATE'
+      });
+    }
+
+    updateNow.addEventListener('click', function (event) {
+      event.stopPropagation();
+      applyExtensionUpdate();
+    });
+
+    updateLater.addEventListener('click', function (event) {
+      event.stopPropagation();
+      hideUpdateDialog();
+    });
 
     function finishOnboarding() {
       onboarding.classList.remove('show');
@@ -508,18 +574,23 @@
     function appendClaudeUsage(row) {
       if (!C2M.claudeUsage) return;
       const snapshot = C2M.claudeUsage.getSnapshot();
-      row.appendChild(textElement('span', 'c2m-inline-separator', '·'));
       const hasSession = !!snapshot && typeof snapshot.sessionPct === 'number';
       const hasWeekly = !!snapshot && typeof snapshot.weeklyPct === 'number';
-      const sessionBlock = buildUsageBlock('Session', hasSession ? snapshot.sessionPct : 'N/A',
-        hasSession ? formatResetIn(snapshot.sessionResetsAt) : '', true);
+      row.appendChild(textElement('span', 'c2m-inline-separator', '·'));
+      if (!hasSession) {
+        row.appendChild(textElement('span', 'c2m-inline-placeholder', 'Usage stats will show here once you send a message'));
+        return;
+      }
+      const sessionBlock = buildUsageBlock('Session', snapshot.sessionPct,
+        formatResetIn(snapshot.sessionResetsAt), true);
       sessionBlock.classList.add('c2m-session-grow');
       row.appendChild(sessionBlock);
-      const weeklyBlock = buildUsageBlock('Week', hasWeekly ? snapshot.weeklyPct : 'N/A',
-        hasWeekly ? formatWeeklyReset(snapshot.weeklyResetsAt) : '');
-      weeklyBlock.classList.add('c2m-weekly');
-      row.appendChild(textElement('span', 'c2m-inline-separator c2m-weekly c2m-push-end', '·'));
-      row.appendChild(weeklyBlock);
+      if (hasWeekly) {
+        const weeklyBlock = buildUsageBlock('Week', snapshot.weeklyPct, formatWeeklyReset(snapshot.weeklyResetsAt));
+        weeklyBlock.classList.add('c2m-weekly');
+        row.appendChild(textElement('span', 'c2m-inline-separator c2m-weekly c2m-push-end', '·'));
+        row.appendChild(weeklyBlock);
+      }
     }
 
     function buildInlineActionButton(iconSvg, label, title, onClick) {
@@ -541,6 +612,7 @@
     }
 
     async function quickCopyInline(format, btn) {
+      showToast('Capturing full chat…', 6000);
       const cap = await captureDoc();
       if (!cap) return;
       const turns = cap.turns.map(function (t) {
@@ -554,7 +626,10 @@
         btn.classList.add(ok ? 'c2m-flash-ok' : 'c2m-flash-fail');
         setTimeout(function () { btn.classList.remove('c2m-flash-ok', 'c2m-flash-fail'); }, 900);
       }
-      recordUsage(format === 'md' ? 'copy-md' : 'copy-yaml');
+      showToast(ok
+        ? 'Copied ' + format.toUpperCase() + '! Paste into a new chat.'
+        : 'Copy failed', 3000);
+      if (ok) recordUsage(format === 'md' ? 'copy-md' : 'copy-yaml');
     }
 
     function renderInlineUsage(stats) {
@@ -613,6 +688,8 @@
       if (inlineUsage) {
         if (inlineUsage.narrowObserver) inlineUsage.narrowObserver.disconnect();
         if (inlineUsage.posObserver) inlineUsage.posObserver.disconnect();
+        if (inlineUsage.mutationObserver) inlineUsage.mutationObserver.disconnect();
+        if (inlineUsage.positionInterval) clearInterval(inlineUsage.positionInterval);
         if (inlineUsage.positionHost) {
           window.removeEventListener('scroll', inlineUsage.positionHost, true);
           window.removeEventListener('resize', inlineUsage.positionHost);
@@ -639,9 +716,10 @@
       if (!inlineUsage || inlineUsage.anchor !== anchor) {
         removeInlineUsage();
         const host = document.createElement('div');
-        host.style.cssText = 'display:block;position:fixed;z-index:2147483000;isolation:isolate;';
+        host.style.cssText = 'display:block;position:fixed;z-index:2147483000;isolation:isolate;transition:left .18s ease,top .18s ease,width .18s ease;';
+
         const usageShadow = host.attachShadow({ mode: 'open' });
-        usageShadow.innerHTML = '<style>:host{display:block;margin:0 0 8px;color:#8f96a3;font:11px/1.4 Inter,ui-sans-serif,system-ui,sans-serif;white-space:nowrap}.c2m-inline-usage{display:flex;align-items:center;gap:4px;opacity:.98;min-height:28px;width:100%;box-sizing:border-box;flex-wrap:wrap;background:#15151a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 12px}.c2m-inline-icon{width:14px;height:14px;margin-right:2px;border-radius:4px}.c2m-inline-label{font-weight:650;background:linear-gradient(90deg,#7357f6 0%,#ff6b57 25%,#ffffff 50%,#ff6b57 75%,#7357f6 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:c2m-shine 3s linear infinite;cursor:pointer}.c2m-inline-separator{padding:0 4px;color:#777184}.c2m-inline-claude-usage{display:inline-flex;align-items:center;gap:9px;color:#a3a9b5;margin:0 2px}.c2m-inline-claude-usage b{color:#c7cbd4;font-weight:650}.c2m-usage-track{display:inline-block;flex:1 1 auto;min-width:40px;height:4px;border-radius:2px;background:#3a3d45;overflow:hidden;vertical-align:middle}.c2m-session-grow{flex:1 1 auto;min-width:0}.c2m-push-end{margin-left:auto}.c2m-usage-fill{display:block;height:100%;background:linear-gradient(90deg,#7357f6,#ff6b57);border-radius:2px}.c2m-inline-reset{color:#777184}.c2m-inline-placeholder{color:#6f7684;font-style:italic}.c2m-inline-action-group{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding-left:6px;border-left:1px solid rgba(255,255,255,.14)}.c2m-inline-action{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:transparent;color:#9aa0ac;width:22px;height:22px;padding:0;cursor:pointer;pointer-events:auto;transition:background .15s,color .15s,transform .15s}.c2m-inline-action:hover{background:rgba(255,255,255,.1);color:#f0f1f5;transform:translateY(-1px)}.c2m-inline-action-icon{display:inline-flex;line-height:0}.c2m-inline-action-icon svg{display:block}.c2m-inline-action.c2m-flash-ok{background:rgba(34,197,94,.22);color:#4ade80}.c2m-inline-action.c2m-flash-fail{background:rgba(239,68,68,.22);color:#f87171}.c2m-inline-coffee{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:0;background:transparent;font-size:14px;line-height:1;padding:0;cursor:pointer;pointer-events:auto;opacity:.8;transition:opacity .15s,transform .15s}.c2m-inline-coffee:hover{opacity:1;transform:translateY(-1px)}.c2m-inline-open-hint{color:#7357f6;font-weight:700;margin-left:1px}.c2m-inline-usage.c2m-compact .c2m-weekly{display:none}@keyframes c2m-shine{0%{background-position:0% 50%}100%{background-position:-250% 50%}}</style>';
+        usageShadow.innerHTML = '<style>:host{display:block;margin:0 0 8px;color:#8f96a3;font:11px/1.4 Inter,ui-sans-serif,system-ui,sans-serif;white-space:nowrap}.c2m-inline-usage{display:flex;align-items:center;gap:4px;opacity:.98;min-height:28px;width:100%;box-sizing:border-box;flex-wrap:wrap;background:#15151a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 12px}.c2m-inline-icon{width:14px;height:14px;margin-right:2px;border-radius:4px}.c2m-inline-label{font-weight:650;background:linear-gradient(90deg,#7357f6 0%,#ff6b57 25%,#ffffff 50%,#ff6b57 75%,#7357f6 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:c2m-shine 3s linear infinite;cursor:pointer}.c2m-inline-separator{padding:0 4px;color:#777184}.c2m-inline-claude-usage{display:inline-flex;align-items:center;gap:9px;color:#a3a9b5;margin:0 2px}.c2m-inline-claude-usage b{color:#c7cbd4;font-weight:650}.c2m-usage-track{display:inline-block;flex:1 1 auto;min-width:40px;height:4px;border-radius:2px;background:#3a3d45;overflow:hidden;vertical-align:middle}.c2m-session-grow{flex:1 1 auto;min-width:0}.c2m-push-end{margin-left:auto}.c2m-usage-fill{display:block;height:100%;background:linear-gradient(90deg,#7357f6,#ff6b57);border-radius:2px}.c2m-inline-reset{color:#777184}.c2m-inline-placeholder{flex:1 1 auto;min-width:0;color:#6f7684;font-style:italic}.c2m-inline-action-group{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding-left:6px;border-left:1px solid rgba(255,255,255,.14)}.c2m-inline-action{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:transparent;color:#9aa0ac;width:22px;height:22px;padding:0;cursor:pointer;pointer-events:auto;transition:background .15s,color .15s,transform .15s}.c2m-inline-action:hover{background:rgba(255,255,255,.1);color:#f0f1f5;transform:translateY(-1px)}.c2m-inline-action-icon{display:inline-flex;line-height:0}.c2m-inline-action-icon svg{display:block}.c2m-inline-action.c2m-flash-ok{background:rgba(34,197,94,.22);color:#4ade80}.c2m-inline-action.c2m-flash-fail{background:rgba(239,68,68,.22);color:#f87171}.c2m-inline-coffee{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:0;background:transparent;font-size:14px;line-height:1;padding:0;cursor:pointer;pointer-events:auto;opacity:.8;transition:opacity .15s,transform .15s}.c2m-inline-coffee:hover{opacity:1;transform:translateY(-1px)}.c2m-inline-open-hint{color:#7357f6;font-weight:700;margin-left:1px}.c2m-inline-usage.c2m-compact .c2m-weekly{display:none}@keyframes c2m-shine{0%{background-position:0% 50%}100%{background-position:-250% 50%}}</style>';
         const usageRow = document.createElement('span');
         usageRow.className = 'c2m-inline-usage';
         usageShadow.appendChild(usageRow);
@@ -666,17 +744,29 @@
         function positionHost() {
           const box = anchor.closest('.rounded-composer') || anchor;
           const rect = box.getBoundingClientRect();
+          const rowHeight = host.offsetHeight || 40;
+          const gap = 10;
+          let top = rect.top - rowHeight - gap;
+          top = Math.max(top, 8);
+          host.style.top = top + 'px';
           host.style.left = rect.left + 'px';
           host.style.width = rect.width + 'px';
-          host.style.top = (rect.top - host.offsetHeight - 14) + 'px';
         }
 
         const posObserver = new ResizeObserver(positionHost);
         posObserver.observe(document.body);
+        const box = anchor.closest('.rounded-composer') || anchor;
+        posObserver.observe(box);
         window.addEventListener('scroll', positionHost, true);
         window.addEventListener('resize', positionHost);
+        const mutationObserver = new MutationObserver(positionHost);
+        mutationObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+        mutationObserver.observe(document.body, { attributes: true, attributeFilter: ['class', 'style'] });
+        const positionInterval = setInterval(positionHost, 300);
         inlineUsage.posObserver = posObserver;
         inlineUsage.positionHost = positionHost;
+        inlineUsage.positionInterval = positionInterval;
+        inlineUsage.mutationObserver = mutationObserver;
 
         const snapshot = C2M.claudeUsage && C2M.claudeUsage.getSnapshot ? C2M.claudeUsage.getSnapshot() : null;
         if (snapshot && typeof snapshot.sessionPct === 'number') {
@@ -870,7 +960,29 @@
 
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
       chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
-        if (!msg || msg.type !== 'CONTEXTHOP_GET_EXPORT') return false;
+        if (!msg) return false;
+
+        if (msg.type === 'CONTEXTHOP_UPDATE_AVAILABLE') {
+          showUpdateDialog(msg.version);
+          return false;
+        }
+
+        if (msg.type === 'CONTEXTHOP_GET_META') {
+          // Lightweight: just what's already visible on screen, no scrolling.
+          try {
+            const conv = adapter.getConversation();
+            if (!conv || !conv.turns.length) {
+              sendResponse({ ok: false, error: 'No conversation found on this page.' });
+              return false;
+            }
+            sendResponse({ ok: true, title: conv.title, turnCount: conv.turns.length });
+          } catch (error) {
+            sendResponse({ ok: false, error: String((error && error.message) || error) });
+          }
+          return false;
+        }
+
+        if (msg.type !== 'CONTEXTHOP_GET_EXPORT') return false;
         (async function () {
           try {
             capture = await captureDoc();
