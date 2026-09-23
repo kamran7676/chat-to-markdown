@@ -13,6 +13,7 @@
   },
   "action": {
     "default_title": "ContextHop — Continue any AI chat in a new one.",
+    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -20,7 +21,24 @@
       "128": "icons/icon128.png"
     }
   },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/app-icon.png",
+        "icons/buymeacoffee-button.png",
+        "icons/easypaisa-icon.png",
+        "icons/jazzcash-icon.png"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["src/content/claude-network-probe.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
     {
       "matches": [
         "https://*/*",
@@ -34,6 +52,7 @@
         "src/content/adapters/generic.js",
         "src/content/adapters/chatgpt.js",
         "src/content/adapters/claude.js",
+        "src/content/adapters/claude-usage.js",
         "src/content/adapters/gemini.js",
         "src/content/adapters/openwebui.js",
         "src/content/adapters/mistral.js",
@@ -41,6 +60,8 @@
         "src/content/adapters/grok.js",
         "src/content/adapters/groq.js",
         "src/content/adapters/index.js",
+        "stats.js",
+        "support.js",
         "src/content/main.js"
       ],
       "run_at": "document_idle"

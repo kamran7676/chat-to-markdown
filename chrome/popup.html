@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ContextHop Support</title>
+  <style>
+    :root { --purple:#7357f6; --orange:#ff6b57; --gradient:linear-gradient(120deg,var(--purple),var(--orange)); --bg:#12121a; --surface:#1b1b27; --line:rgba(255,255,255,.11); --text:#f6f4ff; --muted:#a9a6ba; --r:12px; --r-lg:16px; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text); background:var(--bg); }
+    * { box-sizing:border-box; }
+    body { width:344px; margin:0; padding:16px; background:radial-gradient(circle at top right,rgba(115,87,246,.18),transparent 36%),var(--bg); }
+    .header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .app-icon { width:30px; height:30px; border-radius:9px; }
+    h1 { margin:0; font-size:15px; font-weight:750; letter-spacing:.01em; }
+    .subtitle { margin:0 0 14px; color:var(--muted); font-size:12px; line-height:1.45; }
+    .card { display:flex; flex-direction:column; gap:8px; margin-top:10px; padding:12px; border:1px solid var(--line); border-radius:var(--r); background:rgba(255,255,255,.025); }
+    .coffee { display:flex; justify-content:center; padding:0px; border-radius:var(--r); background:rgba(255,255,255,.04); transition:transform .15s,filter .15s; }
+    .coffee:hover { transform:translateY(-1px) scale(1.015); filter:brightness(1.1); }
+    .coffee:focus-visible,button:focus-visible { outline:2px solid var(--orange); outline-offset:2px; }
+    .coffee img { display:block; width:100%; max-width:220px; height:auto; }
+    .account { color:var(--muted); font-size:11px; }
+    .payment { border-left:3px solid; }
+    .payment.jazz { border-left-color:#f35a4a; background:rgba(243,90,74,.07); }
+    .payment.easy { border-left-color:#00bd59; background:rgba(0,189,89,.07); }
+    .method { display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; }
+    .method img { width:30px; height:30px; object-fit:contain; border-radius:8px; }
+    .number-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .number { color:var(--text); font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace; user-select:text; }
+    button { border:1px solid var(--line); border-radius:8px; background:rgba(255,255,255,.05); color:var(--text); padding:7px 10px; font:650 12px system-ui,sans-serif; cursor:pointer; transition:background .15s,border-color .15s; }
+    button:hover { background:rgba(255,255,255,.11); border-color:rgba(255,255,255,.2); }
+    button.copied { background:var(--gradient); border-color:transparent; }
+  </style>
+</head>
+<body>
+  <main id="popup-root"></main>
+  <script src="support.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
