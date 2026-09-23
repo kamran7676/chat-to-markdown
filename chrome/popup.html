@@ -1,34 +1,120 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
   <title>ContextHop Support</title>
   <style>
-    :root { --purple:#7357f6; --orange:#ff6b57; --gradient:linear-gradient(120deg,var(--purple),var(--orange)); --bg:#12121a; --surface:#1b1b27; --line:rgba(255,255,255,.11); --text:#f6f4ff; --muted:#a9a6ba; --r:12px; --r-lg:16px; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text); background:var(--bg); }
-    * { box-sizing:border-box; }
-    body { width:344px; margin:0; padding:16px; background:radial-gradient(circle at top right,rgba(115,87,246,.18),transparent 36%),var(--bg); }
-    .header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-    .app-icon { width:30px; height:30px; border-radius:9px; }
-    h1 { margin:0; font-size:15px; font-weight:750; letter-spacing:.01em; }
-    .subtitle { margin:0 0 14px; color:var(--muted); font-size:12px; line-height:1.45; }
-    .card { display:flex; flex-direction:column; gap:8px; margin-top:10px; padding:12px; border:1px solid var(--line); border-radius:var(--r); background:rgba(255,255,255,.025); }
-    .coffee { display:flex; justify-content:center; padding:0px; border-radius:var(--r); background:rgba(255,255,255,.04); transition:transform .15s,filter .15s; }
-    .coffee:hover { transform:translateY(-1px) scale(1.015); filter:brightness(1.1); }
-    .coffee:focus-visible,button:focus-visible { outline:2px solid var(--orange); outline-offset:2px; }
-    .coffee img { display:block; width:100%; max-width:220px; height:auto; }
-    .account { color:var(--muted); font-size:11px; }
-    .payment { border-left:3px solid; }
-    .payment.jazz { border-left-color:#f35a4a; background:rgba(243,90,74,.07); }
-    .payment.easy { border-left-color:#00bd59; background:rgba(0,189,89,.07); }
-    .method { display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; }
-    .method img { width:30px; height:30px; object-fit:contain; border-radius:8px; }
-    .number-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-    .number { color:var(--text); font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace; user-select:text; }
-    button { border:1px solid var(--line); border-radius:8px; background:rgba(255,255,255,.05); color:var(--text); padding:7px 10px; font:650 12px system-ui,sans-serif; cursor:pointer; transition:background .15s,border-color .15s; }
-    button:hover { background:rgba(255,255,255,.11); border-color:rgba(255,255,255,.2); }
-    button.copied { background:var(--gradient); border-color:transparent; }
-  </style>
+  :root {
+    --purple:#7357f6; --orange:#ff6b57;
+    --gradient:linear-gradient(120deg,var(--purple),var(--orange));
+    --bg:#0f0f16; --surface:#1b1b27; --surface-2:#20202e;
+    --line:rgba(255,255,255,.09); --line-soft:rgba(255,255,255,.06);
+    --text:#f6f4ff; --muted:#9a97ac; --muted-2:#6f6c82;
+    --r-sm:8px; --r:12px; --r-lg:16px;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    color:var(--text); background:var(--bg);
+  }
+  * { box-sizing:border-box; }
+  ::selection { background:rgba(115,87,246,.35); }
+  body {
+    width:360px; margin:0; padding:18px;
+    background:
+      radial-gradient(circle at top right, rgba(115,87,246,.16), transparent 40%),
+      radial-gradient(circle at bottom left, rgba(255,107,87,.08), transparent 45%),
+      var(--bg);
+  }
+
+  .header { display:flex; align-items:center; gap:11px; margin-bottom:4px; }
+  .app-icon { width:32px; height:32px; border-radius:10px; box-shadow:0 4px 14px rgba(115,87,246,.35); }
+  h1 { margin:0; font-size:15.5px; font-weight:800; letter-spacing:.01em; }
+  .subtitle { margin:4px 0 16px; color:var(--muted); font-size:12px; line-height:1.5; }
+
+  .card {
+    display:flex; flex-direction:column; gap:10px; margin-top:12px;
+    padding:14px; border:1px solid var(--line); border-radius:var(--r);
+    background:var(--surface);
+  }
+
+  .coffee {
+    display:flex; justify-content:center; border-radius:var(--r-sm);
+    background:rgba(255,255,255,.03); overflow:hidden;
+    transition:transform .18s ease, filter .18s ease;
+  }
+  .coffee:hover { transform:translateY(-2px) scale(1.015); filter:brightness(1.12); }
+  .coffee:focus-visible, button:focus-visible { outline:2px solid var(--orange); outline-offset:2px; }
+  .coffee img { display:block; width:100%; max-width:220px; height:auto; }
+  .account { color:var(--muted-2); font-size:11px; }
+
+  .payment {
+    border-left:3px solid; border-radius:var(--r-sm);
+    padding:11px 12px; background:var(--surface-2);
+  }
+  .payment.jazz { border-left-color:#f35a4a; background:linear-gradient(90deg, rgba(243,90,74,.10), rgba(243,90,74,.02)); }
+  .payment.easy { border-left-color:#00bd59; background:linear-gradient(90deg, rgba(0,189,89,.10), rgba(0,189,89,.02)); }
+  .method { display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; margin-bottom:8px; }
+  .method img { width:28px; height:28px; object-fit:contain; border-radius:8px; }
+
+  .number-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .number { color:var(--text); font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace; user-select:text; letter-spacing:.02em; }
+
+  button {
+    border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.05);
+    color:var(--text); padding:7px 13px; font:650 12px system-ui,sans-serif;
+    cursor:pointer; transition:background .15s ease, border-color .15s ease, transform .1s ease;
+  }
+  button:hover { background:rgba(255,255,255,.11); border-color:rgba(255,255,255,.22); }
+  button:active { transform:scale(.97); }
+  button.copied { background:var(--gradient); border-color:transparent; color:#fff; }
+
+  .export-card { gap:12px; }
+  .export-title { font-weight:750; font-size:13.5px; }
+  .export-status { color:var(--muted); font-size:11.5px; }
+  .export-status.error { color:#ff8f7a; }
+
+  .seg { display:flex; gap:4px; padding:3px; background:rgba(0,0,0,.25); border:1px solid var(--line); border-radius:10px; }
+  .seg-btn { flex:1; border:0; border-radius:8px; background:transparent; color:var(--muted); }
+  .seg-btn.active { background:var(--gradient); border-color:transparent; color:#fff; box-shadow:0 3px 10px rgba(115,87,246,.3); }
+
+  .export-actions { display:flex; gap:8px; }
+  .export-actions button { flex:1; border-radius:8px; }
+  .export-actions button:disabled { opacity:.4; cursor:default; }
+
+  .divider { height:1px; background:var(--line); margin:16px 0 2px; border:0; }
+
+  .dest-row { display:flex; gap:6px; }
+  .dest-btn { flex:1; font-size:11px; padding:9px 4px; border-radius:8px; }
+
+  .pack-btn {
+    width:100%; border:0; background:var(--gradient); color:#fff;
+    font:750 13.5px system-ui,sans-serif; padding:12px; border-radius:12px;
+    box-shadow:0 6px 20px rgba(115,87,246,.3);
+    transition:filter .15s ease, transform .1s ease;
+  }
+  .pack-btn:hover { filter:brightness(1.08); }
+  .pack-btn:active { transform:scale(.98); }
+  .pack-hint { color:var(--muted-2); font-size:10.5px; line-height:1.5; margin-top:6px; }
+
+  .section-heading { font-weight:750; font-size:13.5px; margin:0 0 4px; }
+  .export-toggle {
+    color:var(--muted); font-size:11.5px; cursor:pointer;
+    text-decoration:none; background:none; border:0; padding:0; margin-top:4px;
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .export-toggle:hover { color:var(--text); text-decoration:underline; }
+  .export-body { display:none; margin-top:10px; }
+  .export-body.open { display:flex; flex-direction:column; gap:10px; }
+
+  .footer {
+    display:flex; flex-wrap:wrap; align-items:center; gap:12px;
+    margin-top:16px; padding-top:12px; border-top:1px solid var(--line-soft);
+    font-size:11px;
+  }
+  .footer a { color:var(--muted); text-decoration:none; }
+  .footer a:hover { color:var(--text); text-decoration:underline; }
+  .footer .version { margin-left:auto; color:var(--muted-2); }
+</style>
 </head>
 <body>
   <main id="popup-root"></main>

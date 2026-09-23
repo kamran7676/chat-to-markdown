@@ -75,13 +75,40 @@
     }
   }
 
+  // When 5h/7d usage is exhausted, /completion never streams a message_limit
+  // SSE event -- it fails outright with a JSON error body (429/529-ish)
+  // whose error.message_limit (or error.details.message_limit) carries the
+  // exact same {windows, resolved} shape. Parse that too so the usage row
+  // still updates once the limit is hit.
+  function watchErrorBody(response) {
+    if (!response || response.ok || typeof response.text !== 'function') return;
+    try {
+      response.clone().text().then(function (text) {
+        if (!text) return;
+        try {
+          var parsed = JSON.parse(text);
+          var err = parsed && parsed.error;
+          var messageLimit = err && (err.message_limit || (err.details && err.details.message_limit));
+          postUsage(messageLimit);
+        } catch (e) {
+          // not JSON / unexpected shape -- ignore
+        }
+      }).catch(function () {});
+    } catch (e) {
+      // response not cloneable -- fail silently
+    }
+  }
+
   var originalFetch = window.fetch;
   if (typeof originalFetch !== 'function') return;
   window.fetch = function (input, init) {
     var url = typeof input === 'string' ? input : (input && input.url) || '';
     var promise = originalFetch.apply(this, arguments);
     if (TARGET.test(url)) {
-      promise.then(watchStream).catch(function () {});
+      promise.then(function (response) {
+        watchStream(response);
+        watchErrorBody(response);
+      }).catch(function () {});
     }
     return promise;
   };
