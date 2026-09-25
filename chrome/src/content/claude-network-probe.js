@@ -68,18 +68,13 @@
           buffer = parts.pop();
           for (var i = 0; i < parts.length; i++) scanSseChunk(parts[i]);
           return pump();
-        }).catch(function () {});
+        }).catch(function () { });
       })();
     } catch (e) {
       // response not cloneable / stream already locked -- fail silently
     }
   }
 
-  // When 5h/7d usage is exhausted, /completion never streams a message_limit
-  // SSE event -- it fails outright with a JSON error body (429/529-ish)
-  // whose error.message_limit (or error.details.message_limit) carries the
-  // exact same {windows, resolved} shape. Parse that too so the usage row
-  // still updates once the limit is hit.
   function watchErrorBody(response) {
     if (!response || response.ok || typeof response.text !== 'function') return;
     try {
@@ -91,12 +86,47 @@
           var messageLimit = err && (err.message_limit || (err.details && err.details.message_limit));
           postUsage(messageLimit);
         } catch (e) {
-          // not JSON / unexpected shape -- ignore
         }
-      }).catch(function () {});
+      }).catch(function () {
+        scanLimitBannerFallback();
+      });
     } catch (e) {
-      // response not cloneable -- fail silently
+      scanLimitBannerFallback();
     }
+  }
+
+  function scanLimitBannerFallback() {
+    // Claude ka banner jaisa: "Limits will reset at 2:40 PM"
+    var match = document.body.innerText.match(/reset[s]? at (\d{1,2}:\d{2}\s*[AP]M)/i);
+    if (!match) return;
+    var resetTimeStr = match[1];
+    var resetsAt = parseTodayOrTomorrow(resetTimeStr);
+    if (!resetsAt) return;
+    // sessionPct ka exact number nahi milega is tareeqe se, bas ye pata
+    // chal jata hai ke limit exceed ho chuki hai aur kab reset hogi.
+    window.postMessage({
+      source: 'contexthop-claude-usage',
+      payload: {
+        sessionPct: 100,
+        sessionResetsAt: resetsAt,
+        weeklyPct: null,
+        weeklyResetsAt: null
+      }
+    }, '*');
+  }
+
+  function parseTodayOrTomorrow(timeStr) {
+    var m = /(\d{1,2}):(\d{2})\s*([AP]M)/i.exec(timeStr);
+    if (!m) return null;
+    var hours = parseInt(m[1], 10);
+    var minutes = parseInt(m[2], 10);
+    var isPM = m[3].toUpperCase() === 'PM';
+    if (isPM && hours !== 12) hours += 12;
+    if (!isPM && hours === 12) hours = 0;
+    var d = new Date();
+    d.setHours(hours, minutes, 0, 0);
+    if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
+    return d.getTime();
   }
 
   var originalFetch = window.fetch;
@@ -108,7 +138,7 @@
       promise.then(function (response) {
         watchStream(response);
         watchErrorBody(response);
-      }).catch(function () {});
+      }).catch(function () { });
     }
     return promise;
   };
