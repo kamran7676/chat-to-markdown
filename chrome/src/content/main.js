@@ -1,4 +1,5 @@
 /*
+ * To make /chrome zip, use this command in terminal: Compress-Archive -Path chrome\* -DestinationPath contexthop.zip
  * Floating export button + preview panel with Markdown / YAML modes and an
  * ascending/descending message-order toggle (shadow DOM so site styles can't
  * touch it, and it can't touch site styles). Attached to <html> so SPA
