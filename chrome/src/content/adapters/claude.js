@@ -16,7 +16,7 @@
   function getInlineUsageAnchor() {
     const composer = document.querySelector('[contenteditable="true"]');
     if (!composer) return null;
-    return composer.closest('form') || composer.parentElement;
+    return composer.closest('fieldset[data-perf-region="composer"]') || composer;
   }
 
   function isCurrentSite() {

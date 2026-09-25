@@ -708,75 +708,40 @@
         removeInlineUsage();
         return;
       }
-      if (!anchor || !anchor.parentNode || anchor === host) {
+      if (!anchor || !anchor.parentNode) {
         removeInlineUsage();
         return;
       }
 
-      if (!inlineUsage || inlineUsage.anchor !== anchor) {
-        removeInlineUsage();
-        const host = document.createElement('div');
-        host.style.cssText = 'display:block;position:fixed;z-index:2147483000;isolation:isolate;transition:left .18s ease,top .18s ease,width .18s ease;';
-
-        const usageShadow = host.attachShadow({ mode: 'open' });
-        usageShadow.innerHTML = '<style>:host{display:block;margin:0 0 8px;color:#8f96a3;font:11px/1.4 Inter,ui-sans-serif,system-ui,sans-serif;white-space:nowrap}.c2m-inline-usage{display:flex;align-items:center;gap:4px;opacity:.98;min-height:28px;width:100%;box-sizing:border-box;flex-wrap:wrap;background:#15151a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 12px}.c2m-inline-icon{width:14px;height:14px;margin-right:2px;border-radius:4px}.c2m-inline-label{font-weight:650;background:linear-gradient(90deg,#7357f6 0%,#ff6b57 25%,#ffffff 50%,#ff6b57 75%,#7357f6 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:c2m-shine 3s linear infinite;cursor:pointer}.c2m-inline-separator{padding:0 4px;color:#777184}.c2m-inline-claude-usage{display:inline-flex;align-items:center;gap:9px;color:#a3a9b5;margin:0 2px}.c2m-inline-claude-usage b{color:#c7cbd4;font-weight:650}.c2m-usage-track{display:inline-block;flex:1 1 auto;min-width:40px;height:4px;border-radius:2px;background:#3a3d45;overflow:hidden;vertical-align:middle}.c2m-session-grow{flex:1 1 auto;min-width:0}.c2m-push-end{margin-left:auto}.c2m-usage-fill{display:block;height:100%;background:linear-gradient(90deg,#7357f6,#ff6b57);border-radius:2px}.c2m-inline-reset{color:#777184}.c2m-inline-placeholder{flex:1 1 auto;min-width:0;color:#6f7684;font-style:italic}.c2m-inline-action-group{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding-left:6px;border-left:1px solid rgba(255,255,255,.14)}.c2m-inline-action{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:transparent;color:#9aa0ac;width:22px;height:22px;padding:0;cursor:pointer;pointer-events:auto;transition:background .15s,color .15s,transform .15s}.c2m-inline-action:hover{background:rgba(255,255,255,.1);color:#f0f1f5;transform:translateY(-1px)}.c2m-inline-action-icon{display:inline-flex;line-height:0}.c2m-inline-action-icon svg{display:block}.c2m-inline-action.c2m-flash-ok{background:rgba(34,197,94,.22);color:#4ade80}.c2m-inline-action.c2m-flash-fail{background:rgba(239,68,68,.22);color:#f87171}.c2m-inline-coffee{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:0;background:transparent;font-size:14px;line-height:1;padding:0;cursor:pointer;pointer-events:auto;opacity:.8;transition:opacity .15s,transform .15s}.c2m-inline-coffee:hover{opacity:1;transform:translateY(-1px)}.c2m-inline-open-hint{color:#7357f6;font-weight:700;margin-left:1px}.c2m-inline-usage.c2m-compact .c2m-weekly{display:none}@keyframes c2m-shine{0%{background-position:0% 50%}100%{background-position:-250% 50%}}</style>';
-        const usageRow = document.createElement('span');
-        usageRow.className = 'c2m-inline-usage';
-        usageShadow.appendChild(usageRow);
-        document.documentElement.appendChild(host);
-        inlineUsage = { anchor: anchor, host: host, row: usageRow };
-
-        function findFullComposerBox(el) {
-          let node = el;
-          let best = el;
-          for (let i = 0; i < 6 && node.parentElement; i++) {
-            node = node.parentElement;
-            if (node.getBoundingClientRect().width > best.getBoundingClientRect().width + 4) {
-              best = node;
-            } else {
-              // width stopped growing meaningfully — this is likely the outer card
-              break;
-            }
-          }
-          return best;
-        }
-
-        function positionHost() {
-          const box = anchor.closest('.rounded-composer') || anchor;
-          const rect = box.getBoundingClientRect();
-          const rowHeight = host.offsetHeight || 40;
-          const gap = 10;
-          let top = rect.top - rowHeight - gap;
-          top = Math.max(top, 8);
-          host.style.top = top + 'px';
-          host.style.left = rect.left + 'px';
-          host.style.width = rect.width + 'px';
-        }
-
-        const posObserver = new ResizeObserver(positionHost);
-        posObserver.observe(document.body);
-        const box = anchor.closest('.rounded-composer') || anchor;
-        posObserver.observe(box);
-        window.addEventListener('scroll', positionHost, true);
-        window.addEventListener('resize', positionHost);
-        const mutationObserver = new MutationObserver(positionHost);
-        mutationObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
-        mutationObserver.observe(document.body, { attributes: true, attributeFilter: ['class', 'style'] });
-        const positionInterval = setInterval(positionHost, 300);
-        inlineUsage.posObserver = posObserver;
-        inlineUsage.positionHost = positionHost;
-        inlineUsage.positionInterval = positionInterval;
-        inlineUsage.mutationObserver = mutationObserver;
-
-        const snapshot = C2M.claudeUsage && C2M.claudeUsage.getSnapshot ? C2M.claudeUsage.getSnapshot() : null;
-        if (snapshot && typeof snapshot.sessionPct === 'number') {
-          supportPopover.classList.add('open');
-          markSupportAutoShown();
-        }
+      if (inlineUsage && inlineUsage.anchor === anchor && inlineUsage.host.isConnected) {
+        return;
       }
+
+      removeInlineUsage();
+      const host = document.createElement('div');
+      host.style.cssText = 'display:block;width:100%;box-sizing:border-box;margin:0 0 10px;position:relative;isolation:isolate;';
+
+      const usageShadow = host.attachShadow({ mode: 'open' });
+      usageShadow.innerHTML = '<style>:host{display:block;margin:0;color:#8f96a3;font:11px/1.4 Inter,ui-sans-serif,system-ui,sans-serif;white-space:nowrap}.c2m-inline-usage{display:flex;align-items:center;gap:4px;opacity:.98;min-height:28px;width:100%;box-sizing:border-box;flex-wrap:wrap;background:#15151a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 12px}.c2m-inline-icon{width:14px;height:14px;margin-right:2px;border-radius:4px}.c2m-inline-label{font-weight:650;background:linear-gradient(90deg,#7357f6 0%,#ff6b57 25%,#ffffff 50%,#ff6b57 75%,#7357f6 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:c2m-shine 3s linear infinite;cursor:pointer}.c2m-inline-separator{padding:0 4px;color:#777184}.c2m-inline-claude-usage{display:inline-flex;align-items:center;gap:9px;color:#a3a9b5;margin:0 2px}.c2m-inline-claude-usage b{color:#c7cbd4;font-weight:650}.c2m-usage-track{display:inline-block;flex:1 1 auto;min-width:40px;height:4px;border-radius:2px;background:#3a3d45;overflow:hidden;vertical-align:middle}.c2m-session-grow{flex:1 1 auto;min-width:0}.c2m-push-end{margin-left:auto}.c2m-usage-fill{display:block;height:100%;background:linear-gradient(90deg,#7357f6,#ff6b57);border-radius:2px}.c2m-inline-reset{color:#777184}.c2m-inline-placeholder{flex:1 1 auto;min-width:0;color:#6f7684;font-style:italic}.c2m-inline-action-group{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding-left:6px;border-left:1px solid rgba(255,255,255,.14)}.c2m-inline-action{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:transparent;color:#9aa0ac;width:22px;height:22px;padding:0;cursor:pointer;pointer-events:auto;transition:background .15s,color .15s,transform .15s}.c2m-inline-action:hover{background:rgba(255,255,255,.1);color:#f0f1f5;transform:translateY(-1px)}.c2m-inline-action-icon{display:inline-flex;line-height:0}.c2m-inline-action-icon svg{display:block}.c2m-inline-action.c2m-flash-ok{background:rgba(34,197,94,.22);color:#4ade80}.c2m-inline-action.c2m-flash-fail{background:rgba(239,68,68,.22);color:#f87171}.c2m-inline-coffee{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:0;background:transparent;font-size:14px;line-height:1;padding:0;cursor:pointer;pointer-events:auto;opacity:.8;transition:opacity .15s,transform .15s}.c2m-inline-coffee:hover{opacity:1;transform:translateY(-1px)}.c2m-inline-open-hint{color:#7357f6;font-weight:700;margin-left:1px}.c2m-inline-usage.c2m-compact .c2m-weekly{display:none}@keyframes c2m-shine{0%{background-position:0% 50%}100%{background-position:-250% 50%}}</style>';
+      const usageRow = document.createElement('span');
+      usageRow.className = 'c2m-inline-usage';
+      usageShadow.appendChild(usageRow);
+
+      anchor.parentNode.insertBefore(host, anchor);
+
+      inlineUsage = { anchor: anchor, host: host, row: usageRow };
+
+      const snapshot = C2M.claudeUsage && C2M.claudeUsage.getSnapshot ? C2M.claudeUsage.getSnapshot() : null;
+      if (snapshot && typeof snapshot.sessionPct === 'number') {
+        supportPopover.classList.add('open');
+        markSupportAutoShown();
+      }
+
       C2M.stats.getStats().then(function (stats) {
         renderInlineUsage(stats);
-      }).catch(function () { });
+      }).catch(function () {
+        if (inlineUsage && inlineUsage.host) inlineUsage.host.style.visibility = 'hidden';
+      });
     }
 
     function recordUsage(action) {
