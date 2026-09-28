@@ -1,7 +1,7 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 4,
   "name": "ContextHop",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "Copy a compact context pack from ChatGPT, Claude or Gemini and continue your conversation in a fresh chat.",
   "homepage_url": "https://chatup.therobot.codes",
   "permissions": [
