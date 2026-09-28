@@ -45,6 +45,7 @@
       if (line.indexOf('event:') === 0) eventType = line.slice(6).trim();
       else if (line.indexOf('data:') === 0) dataStr += line.slice(5).trim();
     }
+    if (eventType) console.debug('[ContextHop] SSE event:', eventType);
     if (eventType !== 'message_limit' || !dataStr) return;
     try {
       var parsed = JSON.parse(dataStr);

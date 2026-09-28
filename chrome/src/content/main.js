@@ -1285,6 +1285,13 @@
       }
 
       if (inlineUsage && inlineUsage.anchor === anchor && inlineUsage.host.isConnected) {
+        // Re-render when a new usage snapshot arrives (row was stuck on placeholder).
+        const snap = C2M.claudeUsage && C2M.claudeUsage.getSnapshot ? C2M.claudeUsage.getSnapshot() : null;
+        const snapKey = snap ? JSON.stringify(snap) : '';
+        if (snapKey !== inlineUsage.snapKey) {
+          inlineUsage.snapKey = snapKey;
+          C2M.stats.getStats().then(renderInlineUsage).catch(function () { });
+        }
         return;
       }
 
@@ -1300,7 +1307,7 @@
 
       anchor.parentNode.insertBefore(host, anchor);
 
-      inlineUsage = { anchor: anchor, host: host, row: usageRow };
+      inlineUsage = { anchor: anchor, host: host, row: usageRow, snapKey: '' };
 
       const snapshot = C2M.claudeUsage && C2M.claudeUsage.getSnapshot ? C2M.claudeUsage.getSnapshot() : null;
       if (snapshot && typeof snapshot.sessionPct === 'number') {
