@@ -1022,8 +1022,8 @@
       coffee.appendChild(textElement('span', 'c2m-support-account', 'For international supporters'));
       container.appendChild(coffee);
       const localValues = [
-        ['JazzCash IBAN', SUPPORT.jazzcashNumber, 'c2m-support-jazz', JAZZCASH_ICON_IMG],
-        ['Easypaisa IBAN', SUPPORT.easypaisaNumber, 'c2m-support-easy', EASYPAISA_ICON_IMG]
+        // ['JazzCash IBAN', SUPPORT.jazzcashNumber, 'c2m-support-jazz', JAZZCASH_ICON_IMG],
+        // ['Easypaisa IBAN', SUPPORT.easypaisaNumber, 'c2m-support-easy', EASYPAISA_ICON_IMG]
       ];
       localValues.forEach(function (item) {
         const option = appendSupportValue(container, item[0], item[1], toast, item[2], item[3]);
