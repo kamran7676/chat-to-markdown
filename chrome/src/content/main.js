@@ -18,8 +18,8 @@
   const assetUrl = function (path) { return chrome.runtime.getURL(path); };
   const APP_ICON_IMG = assetUrl(SUPPORT.assets.appIcon);
   const COFFEE_BUTTON_IMG = assetUrl(SUPPORT.assets.coffeeButton);
-  const EASYPAISA_ICON_IMG = assetUrl(SUPPORT.assets.easypaisaIcon);
-  const JAZZCASH_ICON_IMG = assetUrl(SUPPORT.assets.jazzcashIcon);
+  // const EASYPAISA_ICON_IMG = assetUrl(SUPPORT.assets.easypaisaIcon);
+  // const JAZZCASH_ICON_IMG = assetUrl(SUPPORT.assets.jazzcashIcon);
 
   const MD_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" width="13" height="13"><path d="M256 0a256 256 0 1 0 0 512 256 256 0 1 0 0-512zM244.7 387.3l-104-104c-4.6-4.6-5.9-11.5-3.5-17.4s8.3-9.9 14.8-9.9l56 0 0-96c0-17.7 14.3-32 32-32l32 0c17.7 0 32 14.3 32 32l0 96 56 0c6.5 0 12.3 3.9 14.8 9.9s1.1 12.9-3.5 17.4l-104 104c-6.2 6.2-16.4 6.2-22.6 0z"/></svg>';
   const YAML_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" width="13" height="13"><path d="M0 64C0 28.7 28.7 0 64 0L213.5 0c17 0 33.3 6.7 45.3 18.7L365.3 125.3c12 12 18.7 28.3 18.7 45.3L384 448c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 64zm208-5.5l0 93.5c0 13.3 10.7 24 24 24L325.5 176 208 58.5zM88 64C74.7 64 64 74.7 64 88s10.7 24 24 24l48 0c13.3 0 24-10.7 24-24s-10.7-24-24-24L88 64zm0 96c-13.3 0-24 10.7-24 24s10.7 24 24 24l48 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-48 0zm70.3 160c-11.3 0-21.9 5.1-28.9 13.9L69.3 409c-8.3 10.3-6.6 25.5 3.7 33.7s25.5 6.6 33.7-3.8l47.1-58.8 15.2 50.7c3 10.2 12.4 17.1 23 17.1l104 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-86.1 0-16.1-53.6c-4.7-15.7-19.1-26.4-35.5-26.4z"/></svg>';
@@ -1035,18 +1035,7 @@
       renderSupport(container, toast);
     }
 
-    function formatResetIn(resetsAt) {
-      if (!resetsAt) return '';
-      const ms = resetsAt - Date.now();
-      if (ms <= 0) return '';
-      const totalMinutes = Math.round(ms / 60000);
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-      return hours > 0 ? (hours + 'h' + minutes + 'm') : (minutes + 'm');
-    }
-
     function usageColor(pct) {
-      // green (low) -> orange -> red (high), smooth interpolation
       const clamped = Math.max(0, Math.min(100, pct));
       if (clamped <= 50) {
         const t = clamped / 50;
@@ -1070,7 +1059,7 @@
       if (!ts) return '';
       const diffMs = ts - Date.now();
       if (diffMs <= 0) return 'soon';
-      const totalMinutes = Math.round(diffMs / 60000);
+      const totalMinutes = Math.floor(diffMs / 60000);
       const days = Math.floor(totalMinutes / 1440);
       const hours = Math.floor((totalMinutes % 1440) / 60);
       const minutes = totalMinutes % 60;
@@ -1139,7 +1128,7 @@
         return;
       }
 
-      row.appendChild(textElement('span', 'c2m-inline-placeholder', 'Usage stats will show here once you send a message'));
+      row.appendChild(textElement('span', 'c2m-inline-placeholder', 'Loading usage… (free plan: shows after your first message)'));
     }
 
     function readLimitFromDom() {
@@ -1285,9 +1274,10 @@
       }
 
       if (inlineUsage && inlineUsage.anchor === anchor && inlineUsage.host.isConnected) {
-        // Re-render when a new usage snapshot arrives (row was stuck on placeholder).
         const snap = C2M.claudeUsage && C2M.claudeUsage.getSnapshot ? C2M.claudeUsage.getSnapshot() : null;
-        const snapKey = snap ? JSON.stringify(snap) : '';
+        const snapKey = snap
+          ? JSON.stringify(snap) + '|' + formatResetIn(snap.sessionResetsAt) + '|' + formatResetIn(snap.weeklyResetsAt)
+          : '';
         if (snapKey !== inlineUsage.snapKey) {
           inlineUsage.snapKey = snapKey;
           C2M.stats.getStats().then(renderInlineUsage).catch(function () { });
@@ -1492,8 +1482,7 @@
       });
     }
     if (adapter.getInlineUsageAnchor) {
-      refreshInlineUsage();
-      setInterval(refreshInlineUsage, 2500);
+      refreshInlineUsage(); setInterval(refreshInlineUsage, 1000);
     }
     syncToggleState();
     updateToggleBadge();

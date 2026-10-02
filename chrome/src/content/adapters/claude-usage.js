@@ -21,6 +21,8 @@
     snapshot = data.payload;
   }, false);
 
+  window.postMessage({ source: 'contexthop-usage-request' }, '*');
+
   C2M.claudeUsage = {
     getSnapshot: function () { return snapshot; }
   };

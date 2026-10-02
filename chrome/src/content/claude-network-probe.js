@@ -1,43 +1,109 @@
-/*
- * Runs in the page's MAIN world (see manifest.json) so it can see claude.ai's
- * own window.fetch before any wrapping. Claude's /completion endpoint streams
- * Server-Sent Events, and near the end of that stream (after the reply text,
- * before "message_stop") it emits an event like:
- *
- *   event: message_limit
- *   data: {"type":"message_limit","message_limit":{
- *     "windows": {
- *       "5h": { "status": "within_limit", "resets_at": 1790155800, "utilization": 0.21 },
- *       "7d": { "status": "within_limit", "resets_at": 1790668800, "utilization": 0.03 }
- *     },
- *     "resolved": { "limit": { "percent": 21, "resets_at": "2026-09-23T09:30:00+00:00" } }
- *   }}
- *
- * That is Claude's real session/weekly usage -- the same data third-party
- * "usage tracker" extensions read. resets_at under "windows" is Unix
- * *seconds*. We only peek at a cloned response stream; we never touch or
- * delay the original response Claude's own UI is reading.
- */
 (function () {
-  var TARGET = /\/completion(\?|$)/;
+  window.__ctxhop = [];
+  function dbg() {
+    var a = [].slice.call(arguments).map(function (x) { return typeof x === 'string' ? x : JSON.stringify(x); });
+    window.__ctxhop.push(new Date().toLocaleTimeString() + ' ' + a.join(' '));
+  }
+  dbg('probe loaded');
+
+  var TARGET = /\/(retry_)?completion(\?|$)/;
+
+  var apiActive = false, apiBusy = false, apiBlockedUntil = 0, lastApiAt = 0, orgIds = null, lastPayload = null;
+
+  function toMs(v) {
+    if (typeof v === 'number') return v < 1e12 ? v * 1000 : v;
+    if (typeof v === 'string') { var t = Date.parse(v); return isNaN(t) ? null : t; }
+    return null;
+  }
+  function bucketPct(b) {
+    if (!b || typeof b.utilization !== 'number') return null;
+    return Math.max(0, Math.min(100, Math.round(b.utilization))); // already 0-100
+  }
+  async function getOrgIds() {
+    if (orgIds) return orgIds;
+    var r = await originalFetch('/api/organizations', { credentials: 'include' });
+    if (!r.ok) throw new Error('orgs ' + r.status);
+    var list = await r.json();
+    orgIds = list
+      .filter(function (o) { return !o.capabilities || o.capabilities.indexOf('chat') !== -1; })
+      .map(function (o) { return o.uuid; });
+
+    dbg('orgs', list.map(function (o) { return { cap: o.capabilities }; }));
+    return orgIds;
+  }
+
+  function scheduleRefresh() {
+    [1500, 6000].forEach(function (ms) {
+      setTimeout(function () { refreshApiUsage(true); }, ms);
+    });
+  }
+
+  async function refreshApiUsage(force) {
+    var now = Date.now();
+    if (apiBusy || now < apiBlockedUntil || (!force && now - lastApiAt < 15000)) return;
+    apiBusy = true; lastApiAt = now;
+    try {
+      var ids = await getOrgIds();
+      for (var i = 0; i < ids.length; i++) {
+        var r = await originalFetch('/api/organizations/' + ids[i] + '/usage', { credentials: 'include' });
+        if (!r.ok) { dbg('usage http', r.status); continue; }
+        var d = await r.json();
+        var s = bucketPct(d && d.five_hour);
+        console.log('[ContextHop] /usage ->', s, d.seven_day && d.seven_day.utilization, new Date().toLocaleTimeString(), force ? '(forced)' : '');
+        if (s === null) continue;
+        apiActive = true;
+        apiActive = true;
+        var sr = toMs(d.five_hour.resets_at);
+        if (lastPayload && lastPayload.sessionPct > s && lastPayload.sessionResetsAt && sr &&
+          Math.abs(sr - lastPayload.sessionResetsAt) < 60000) return;
+        lastPayload = {
+          sessionPct: s,
+          sessionResetsAt: toMs(d.five_hour.resets_at),
+          weeklyPct: bucketPct(d.seven_day),
+          weeklyResetsAt: d.seven_day ? toMs(d.seven_day.resets_at) : null
+        };
+        window.postMessage({ source: 'contexthop-claude-usage', payload: lastPayload }, '*');
+        return;
+      }
+      apiActive = false; apiBlockedUntil = Date.now() + 30 * 60 * 1000;
+    } catch (e) {
+      console.log('[ContextHop] usage api failed', e);
+      apiActive = false; apiBlockedUntil = Date.now() + 2 * 60 * 1000;
+    } finally { apiBusy = false; }
+  }
+
+  window.addEventListener('message', function (e) {
+    if (e.source === window && e.data && e.data.source === 'contexthop-usage-request' && lastPayload) {
+      window.postMessage({ source: 'contexthop-claude-usage', payload: lastPayload }, '*');
+    }
+  });
+
+  function toPct(w) {
+    if (!w || typeof w.utilization !== 'number') return null;
+    if (w.status && w.status !== 'within_limit') return 100;
+    return Math.max(0, Math.min(100, Math.round(w.utilization * 100)));
+  }
 
   function postUsage(messageLimit) {
-    if (!messageLimit || !messageLimit.windows) return;
-    var session = messageLimit.windows['5h'];
-    var weekly = messageLimit.windows['7d'];
-    window.postMessage({
-      source: 'contexthop-claude-usage',
-      payload: {
-        sessionPct: session && typeof session.utilization === 'number' ? Math.round(session.utilization * 100) : null,
-        sessionResetsAt: session && session.resets_at ? session.resets_at * 1000 : null,
-        weeklyPct: weekly && typeof weekly.utilization === 'number' ? Math.round(weekly.utilization * 100) : null,
-        weeklyResetsAt: weekly && weekly.resets_at ? weekly.resets_at * 1000 : null
-      }
-    }, '*');
+    refreshApiUsage();
+    if (!messageLimit) return;
+    var w = messageLimit.windows;
+    if (!w) { console.log('[ContextHop] message_limit has no windows:', JSON.stringify(messageLimit)); return; }
+    var session = w['5h'] || w.five_hour || w.session;
+    var weekly = w['7d'] || w.seven_day || w.weekly;
+    var payload = {
+      sessionPct: toPct(session),
+      sessionResetsAt: session && session.resets_at ? session.resets_at * 1000 : null,
+      weeklyPct: toPct(weekly),
+      weeklyResetsAt: weekly && weekly.resets_at ? weekly.resets_at * 1000 : null
+    };
+    if (payload.sessionPct === null) return;
+    lastPayload = payload;
+    window.postMessage({ source: 'contexthop-claude-usage', payload: payload }, '*');
   }
 
   function scanSseChunk(chunk) {
-    var lines = chunk.split('\n');
+    var lines = chunk.split(/\r?\n/);
     var eventType = null;
     var dataStr = '';
     for (var i = 0; i < lines.length; i++) {
@@ -45,7 +111,7 @@
       if (line.indexOf('event:') === 0) eventType = line.slice(6).trim();
       else if (line.indexOf('data:') === 0) dataStr += line.slice(5).trim();
     }
-    if (eventType) console.debug('[ContextHop] SSE event:', eventType);
+    if (eventType) console.log('[ContextHop] SSE event:', eventType, eventType === 'message_limit' ? dataStr : '');
     if (eventType !== 'message_limit' || !dataStr) return;
     try {
       var parsed = JSON.parse(dataStr);
@@ -63,9 +129,12 @@
       var buffer = '';
       (function pump() {
         reader.read().then(function (result) {
-          if (result.done) return;
+          if (result.done) {
+            console.log('[ContextHop] stream done'); scheduleRefresh(); return;
+          }
+
           buffer += decoder.decode(result.value, { stream: true });
-          var parts = buffer.split('\n\n');
+          var parts = buffer.split(/\r?\n\r?\n/);
           buffer = parts.pop();
           for (var i = 0; i < parts.length; i++) scanSseChunk(parts[i]);
           return pump();
@@ -97,14 +166,12 @@
   }
 
   function scanLimitBannerFallback() {
-    // Claude ka banner jaisa: "Limits will reset at 2:40 PM"
+    if (apiActive) return;
     var match = document.body.innerText.match(/reset[s]? at (\d{1,2}:\d{2}\s*[AP]M)/i);
     if (!match) return;
     var resetTimeStr = match[1];
     var resetsAt = parseTodayOrTomorrow(resetTimeStr);
     if (!resetsAt) return;
-    // sessionPct ka exact number nahi milega is tareeqe se, bas ye pata
-    // chal jata hai ke limit exceed ho chuki hai aur kab reset hogi.
     window.postMessage({
       source: 'contexthop-claude-usage',
       payload: {
@@ -136,6 +203,7 @@
     var url = typeof input === 'string' ? input : (input && input.url) || '';
     var promise = originalFetch.apply(this, arguments);
     if (TARGET.test(url)) {
+      console.log('[ContextHop] watching', url);
       promise.then(function (response) {
         watchStream(response);
         watchErrorBody(response);
@@ -143,4 +211,6 @@
     }
     return promise;
   };
+  refreshApiUsage();
+  setInterval(refreshApiUsage, 60 * 1000);
 })();
